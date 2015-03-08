@@ -51,7 +51,7 @@ public class DynamicProxySmokeTest {
         MethodHandle invokee = LOOKUP.findVirtual(CountDownLatch.class, "countDown", MethodType.methodType(Void.TYPE))
                                      .bindTo(latch);
         MethodHandle boundInvokee = MethodHandles.dropArguments(invokee, 0, Object.class);
-        DynamicInvocationHandler handler = (lookup, name, type) -> new ConstantCallSite(boundInvokee.asType(type));
+        DynamicInvocationHandler handler = (lookup, name, type, superMethod) -> new ConstantCallSite(boundInvokee.asType(type));
 
         DynamicProxy proxy = DynamicProxy.builder()
                 .withInterfaces(OneMethodInterface.class)

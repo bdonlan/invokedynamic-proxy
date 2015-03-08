@@ -31,7 +31,7 @@ public class DynamicProxyArgAndReturnTests {
 
     @Test
     public void testReturns() throws Throwable {
-        DynamicInvocationHandler handler = (lookup, name, type) -> {
+        DynamicInvocationHandler handler = (lookup, name, type, superMethod) -> {
             Object rv;
 
             switch (name) {
@@ -94,7 +94,7 @@ public class DynamicProxyArgAndReturnTests {
                 Object.class
         );
 
-        DynamicInvocationHandler handler = (lookup, name, type) -> new ConstantCallSite(handleInvokee.asType(type));
+        DynamicInvocationHandler handler = (lookup, name, type, superMethod) -> new ConstantCallSite(handleInvokee.asType(type));
 
         MethodHandle ctor = DynamicProxy.builder()
                 .withInterfaces(ArgTester.class)

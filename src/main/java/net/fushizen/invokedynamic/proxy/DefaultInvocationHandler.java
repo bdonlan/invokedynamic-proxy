@@ -24,7 +24,16 @@ class DefaultInvocationHandler implements DynamicInvocationHandler {
     }
 
     @Override
-    public CallSite handleInvocation(MethodHandles.Lookup proxyLookup, String methodName, MethodType methodType) {
+    public CallSite handleInvocation(
+            MethodHandles.Lookup proxyLookup,
+            String methodName,
+            MethodType methodType,
+            MethodHandle superMethod
+    ) {
+        if (superMethod != null) {
+            return new ConstantCallSite(superMethod.asType(methodType));
+        }
+
         return new ConstantCallSite(
                 MethodHandles.dropArguments(THROW_UNSUPPORTED, 0, methodType.parameterList()).asType(methodType)
         );

@@ -1,5 +1,6 @@
 package net.fushizen.invokedynamic.proxy;
 
+import com.oracle.webservices.internal.api.databinding.Databinding;
 import org.objectweb.asm.*;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -23,7 +24,8 @@ public class DynamicProxy {
     private static final AtomicInteger CLASS_COUNT = new AtomicInteger();
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     public static final String BOOTSTRAP_DYNAMIC_METHOD_NAME = "$$bootstrapDynamic";
-    public static final String BOOTSTRAP_DYNAMIC_METHOD_DESCRIPTOR = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;";
+    public static final String BOOTSTRAP_DYNAMIC_METHOD_DESCRIPTOR
+            = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;ILjava/lang/invoke/MethodHandle;)Ljava/lang/invoke/CallSite;";
     public static final String INIT_PROXY_METHOD_NAME = "$$initProxy";
     private final Class<?> proxyClass;
     private final MethodHandle constructor;
@@ -69,6 +71,14 @@ public class DynamicProxy {
             return this;
         }
 
+        public Builder withSuperclass(Class<?> klass) throws NoSuchMethodException {
+            klass.getConstructor();
+
+            superclass = klass;
+
+            return this;
+        }
+
         public DynamicProxy build() throws Exception {
             Class<?> proxyClass = generateProxyClass(this);
             MethodHandle constructor = LOOKUP.findConstructor(proxyClass, MethodType.methodType(Void.TYPE));
@@ -83,7 +93,6 @@ public class DynamicProxy {
 
             return new DynamicProxy(proxyClass, constructor);
         }
-
     }
 
     private static Class<?> generateProxyClass(Builder builder) {
@@ -135,18 +144,20 @@ public class DynamicProxy {
             List<Class<?>> contributors
     ) {
         int access = ACC_PROTECTED;
+        ConcreteMethodTracker concreteMethodTracker = new ConcreteMethodTracker();
 
         for (Class<?> contributor : contributors) {
-            Method m = null;
+            Method m;
             try {
                 m = contributor.getDeclaredMethod(method.getName(), method.getArgs());
             } catch (NoSuchMethodException e) {
                 throw new NoSuchMethodError(e.getMessage());
             }
 
+            concreteMethodTracker.add(m);
+
             if (Modifier.PUBLIC == (m.getModifiers() & Modifier.PUBLIC)) {
                 access = ACC_PUBLIC;
-                break;
             }
         }
 
@@ -197,15 +208,35 @@ public class DynamicProxy {
             descriptorArgs.add(Type.getType(argKlass));
         }
 
+        Handle bootstrapHandle = new Handle(
+                H_INVOKESTATIC,
+                classInternalName,
+                BOOTSTRAP_DYNAMIC_METHOD_NAME,
+                BOOTSTRAP_DYNAMIC_METHOD_DESCRIPTOR
+        );
+
+        // We always need some kind of handle to pass, even if we don't have a supermethod. Pass the bootstrap handle in
+        // this case (our bootstrap shim will null this out before calling user code)
+        Handle superHandle = bootstrapHandle;
+        Method superMethod = concreteMethodTracker.getOnlyContributor();
+        int hasSuper = 0;
+
+        if (superMethod != null) {
+            hasSuper = 1;
+            superHandle = new Handle(
+                    H_INVOKESPECIAL,
+                    Type.getInternalName(superMethod.getDeclaringClass()),
+                    superMethod.getName(),
+                    Type.getMethodDescriptor(superMethod)
+            );
+        }
+
         mv.visitInvokeDynamicInsn(
                 method.getName(),
                 Type.getMethodType(Type.getType(method.getReturnType()), descriptorArgs.toArray(new Type[0])).getDescriptor(),
-                new Handle(
-                        H_INVOKESTATIC,
-                        classInternalName,
-                        BOOTSTRAP_DYNAMIC_METHOD_NAME,
-                        BOOTSTRAP_DYNAMIC_METHOD_DESCRIPTOR
-                        )
+                bootstrapHandle,
+                (Integer)hasSuper,
+                superHandle
         );
 
         switch (typeIdentifier(method.getReturnType())) {
@@ -338,18 +369,27 @@ public class DynamicProxy {
             mv.visitVarInsn(ALOAD, 0);
             mv.visitVarInsn(ALOAD, 1);
             mv.visitVarInsn(ALOAD, 2);
+
+            mv.visitVarInsn(ILOAD, 3);
+            Label l1 = new Label();
+            mv.visitJumpInsn(IFNE, l1);
+            mv.visitInsn(ACONST_NULL);
+            Label l2 = new Label();
+            mv.visitJumpInsn(GOTO, l2);
+            mv.visitLabel(l1);
+            mv.visitVarInsn(ALOAD, 4);
+            mv.visitLabel(l2);
+
             mv.visitMethodInsn(INVOKEINTERFACE,
                     "net/fushizen/invokedynamic/proxy/DynamicInvocationHandler",
                     "handleInvocation",
-                    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;",
+                    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;)Ljava/lang/invoke/CallSite;",
                     true);
+
             mv.visitInsn(ARETURN);
-            Label l1 = new Label();
-            mv.visitLabel(l1);
-            mv.visitLocalVariable("caller", "Ljava/lang/invoke/MethodHandles$Lookup;", null, l0, l1, 0);
-            mv.visitLocalVariable("name", "Ljava/lang/String;", null, l0, l1, 1);
-            mv.visitLocalVariable("type", "Ljava/lang/invoke/MethodType;", null, l0, l1, 2);
-            mv.visitMaxs(4, 3);
+            Label l3 = new Label();
+            mv.visitLabel(l3);
+            mv.visitMaxs(5, 5);
             mv.visitEnd();
         }
     }
