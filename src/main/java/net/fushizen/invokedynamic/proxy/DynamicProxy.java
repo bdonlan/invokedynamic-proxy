@@ -134,7 +134,7 @@ public class DynamicProxy {
         visitCtor(cw, superclassName);
         visitInternalMethods(cw, classInternalName, builder);
 
-        HashMap<MethodIdentifier, ArrayList<Class<?>>> methods = new HashMap<>();
+        HashMap<MethodIdentifier, ArrayList<Method>> methods = new HashMap<>();
         for (Class<?> interfaceClass : builder.interfaces) {
             collectMethods(interfaceClass, builder, methods);
         }
@@ -150,7 +150,7 @@ public class DynamicProxy {
         return loader.loadClass(classData);
     }
 
-    private static void visitMethods(ClassVisitor cw, String classInternalName, HashMap<MethodIdentifier, ArrayList<Class<?>>> methods) {
+    private static void visitMethods(ClassVisitor cw, String classInternalName, HashMap<MethodIdentifier, ArrayList<Method>> methods) {
         methods.forEach((method, contributors) -> emitMethod(cw, classInternalName, method, contributors));
     }
 
@@ -158,19 +158,12 @@ public class DynamicProxy {
             ClassVisitor cw,
             String classInternalName,
             MethodIdentifier method,
-            List<Class<?>> contributors
+            List<Method> contributors
     ) {
         int access = ACC_PROTECTED;
         ConcreteMethodTracker concreteMethodTracker = new ConcreteMethodTracker();
 
-        for (Class<?> contributor : contributors) {
-            Method m;
-            try {
-                m = contributor.getDeclaredMethod(method.getName(), method.getArgs());
-            } catch (NoSuchMethodException e) {
-                throw new NoSuchMethodError(e.getMessage());
-            }
-
+        for (Method m : contributors) {
             concreteMethodTracker.add(m);
 
             if (Modifier.PUBLIC == (m.getModifiers() & Modifier.PUBLIC)) {
@@ -411,9 +404,13 @@ public class DynamicProxy {
         }
     }
 
-    private static void collectMethods(Class<?> klass, Builder builder, HashMap<MethodIdentifier, ArrayList<Class<?>>> methods) {
+    private static void collectMethods(Class<?> klass, Builder builder, HashMap<MethodIdentifier, ArrayList<Method>> methods) {
         if (klass.getSuperclass() != null && klass != Object.class) {
             collectMethods(klass.getSuperclass(), builder, methods);
+        }
+
+        for (Class<?> interfaceClass : klass.getInterfaces()) {
+            collectMethods(interfaceClass, builder, methods);
         }
 
         for (Method m : klass.getDeclaredMethods()) {
@@ -431,14 +428,14 @@ public class DynamicProxy {
             }
 
             MethodIdentifier identifier = new MethodIdentifier(m.getName(), m.getReturnType(), m.getParameterTypes());
-            ArrayList<Class<?>> methodOwners = methods.get(identifier);
+            ArrayList<Method> methodOwners = methods.get(identifier);
 
             if (methodOwners == null) {
                 methodOwners = new ArrayList<>();
                 methods.put(identifier, methodOwners);
             }
 
-            methodOwners.add(klass);
+            methodOwners.add(m);
         }
     }
 

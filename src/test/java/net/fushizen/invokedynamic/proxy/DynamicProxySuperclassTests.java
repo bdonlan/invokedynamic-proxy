@@ -108,4 +108,47 @@ public class DynamicProxySuperclassTests {
 
         obj.foo();
     }
+
+    public static abstract class Inheritor3 implements I3 {
+
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void whenSuperclassImplementsInterface_interfaceMethodsAreProxied() throws Throwable {
+        Inheritor3 obj = (Inheritor3) DynamicProxy.builder().withSuperclass(Inheritor3.class).build().constructor().invoke();
+
+        obj.foo();
+    }
+
+    public interface IFaceA {
+        // MethodHandles.constant does not support primitive void, so use Object here to make the handler simpler
+        public Object a();
+    }
+
+    public interface IFaceB {
+        public Object b();
+    }
+
+    public interface IFaceC extends IFaceA, IFaceB {}
+
+    @Test
+    public void whenInterfacesHaveMultipleInheritance_interfaceMethodsAreProxied() throws Throwable {
+        DynamicInvocationHandler handler = (lookup, name, type, supermethod) -> new ConstantCallSite(
+                MethodHandles.dropArguments(
+                        MethodHandles.constant(type.returnType(), null),
+                        0,
+                        type.parameterList()
+                )
+        );
+
+        IFaceC obj = (IFaceC)DynamicProxy.builder()
+                .withInvocationHandler(handler)
+                .withInterfaces(IFaceC.class)
+                .build()
+                .constructor()
+                .invoke();
+
+        obj.a();
+        obj.b();
+    }
 }
