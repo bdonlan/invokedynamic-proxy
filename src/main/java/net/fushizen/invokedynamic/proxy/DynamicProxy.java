@@ -15,6 +15,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.objectweb.asm.Opcodes.*;
 
+/**
+ * A proxy class built using Java 7 INVOKEDYNAMIC mechanics.
+ */
 public class DynamicProxy {
     private static final AtomicInteger CLASS_COUNT = new AtomicInteger();
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
@@ -25,15 +28,23 @@ public class DynamicProxy {
     private final Class<?> proxyClass;
     private final MethodHandle constructor;
 
-    public DynamicProxy(Class<?> proxyClass, MethodHandle constructor) {
+    private DynamicProxy(Class<?> proxyClass, MethodHandle constructor) {
         this.proxyClass = proxyClass;
         this.constructor = constructor;
     }
 
+    /**
+     *
+     * @return the generated and loaded proxy class object
+     */
     public Class<?> proxyClass() {
         return proxyClass;
     }
 
+    /**
+     *
+     * @return A MethodHandle that will construct an instance of this proxy.
+     */
     public MethodHandle constructor() {
         return constructor;
     }
@@ -60,12 +71,23 @@ public class DynamicProxy {
             return this;
         }
 
+        /**
+         * Requests that a proxy method for void finalize() should be generated. If this method is not called, a
+         * finalize method will only be generated if it is found on a non-Object class of interest.
+         */
         public Builder withFinalizer() {
             hasFinalizer = true;
 
             return this;
         }
 
+        /**
+         * Sets the superclass of the proxy. The superclass must be public, and must have a public zero-argument
+         * constructor. If this method is not called, Object will be used.
+         * @param klass
+         * @return
+         * @throws NoSuchMethodException If a suitable constructor is not found
+         */
         public Builder withSuperclass(Class<?> klass) throws NoSuchMethodException {
             klass.getConstructor();
 
