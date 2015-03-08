@@ -54,7 +54,7 @@ public class DynamicProxySmokeTest {
                 .withInterfaces(OneMethodInterface.class)
                 .withInvocationHandler(handler)
                 .build();
-        ((OneMethodInterface)proxy.constructor().invoke()).foo();
+        ((OneMethodInterface)proxy.supplier().get()).foo();
 
         assertEquals(0, latch.getCount());
     }

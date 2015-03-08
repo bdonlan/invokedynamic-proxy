@@ -2,16 +2,19 @@ package net.fushizen.invokedynamic.proxy;
 
 import org.objectweb.asm.*;
 
+import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.UndeclaredThrowableException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -25,6 +28,7 @@ public class DynamicProxy {
     public static final String BOOTSTRAP_DYNAMIC_METHOD_DESCRIPTOR
             = "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;ILjava/lang/invoke/MethodHandle;)Ljava/lang/invoke/CallSite;";
     public static final String INIT_PROXY_METHOD_NAME = "$$initProxy";
+
     private final Class<?> proxyClass;
     private final MethodHandle constructor;
 
@@ -47,6 +51,22 @@ public class DynamicProxy {
      */
     public MethodHandle constructor() {
         return constructor;
+    }
+
+    /**
+     *
+     * @return A Supplier that will construct an instance of this proxy.
+     */
+    public Supplier<Object> supplier() {
+        return () -> {
+            try {
+                return constructor().invoke();
+            } catch (Error | RuntimeException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw new UndeclaredThrowableException(t);
+            }
+        };
     }
 
     public static Builder builder() {
