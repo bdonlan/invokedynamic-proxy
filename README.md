@@ -20,8 +20,11 @@ to features unavailable through standard Proxies.
             DynamicInvocationHandler handler = (lookup, name, type, superMethod) -> {
                 if (name.equals("sayHi")) {
                     return new ConstantCallSite(
-                            LOOKUP.findStatic(Demo.class, "impl_sayHi", MethodType.methodType(Void.TYPE, Object.class))
-                                  .asType(type)
+                        LOOKUP.findStatic(
+                                 Demo.class,
+                                 "impl_sayHi",
+                                 MethodType.methodType(Void.TYPE, Object.class)
+                               ).asType(type)
                     );
                 } else {
                     return new ConstantCallSite(superMethod);
@@ -38,7 +41,7 @@ to features unavailable through standard Proxies.
         }
     }
 
-## That looks a lot more complicated than using Proxy
+## That looks more complicated than using Proxy
 
 It is, a little. You do however get two big benefits from this method:
 
@@ -49,6 +52,11 @@ It is, a little. You do however get two big benefits from this method:
   method implementations from a Proxy method handler. With invokedynamic-proxy, the superclass or default method is
   passed in to your handler (and you also get a Lookup instance with access to private and super-methods of the proxy
   class).
+
+## What version of Java does this need?
+
+Java 8. Not for any particularly compelling reason, but if you're on Java 7 you really ought to move on to 8 anyway,
+just for the security support.
 
 ## License
 
