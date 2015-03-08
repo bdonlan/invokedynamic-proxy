@@ -349,8 +349,8 @@ public class DynamicProxy {
 
         {
             /*
-                private static CallSite $$bootstrapDynamic(MethodHandles.Lookup caller, String name, MethodType type) {
-                    return $$handler.handleInvocation(caller, name, type);
+                private static CallSite $$bootstrapDynamic(MethodHandles.Lookup caller, String name, MethodType type, int hasSuper, MethodHandle superMethod) {
+                    return $$handler.handleInvocation(caller, name, type, hasSuper != 0 ? superMethod : null);
                 }
              */
             mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC,

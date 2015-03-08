@@ -9,5 +9,6 @@ import java.lang.invoke.MethodType;
  * Created by bd on 3/7/15.
  */
 public interface DynamicInvocationHandler {
-    public CallSite handleInvocation(MethodHandles.Lookup proxyLookup, String methodName, MethodType methodType, MethodHandle superMethod);
+    public CallSite handleInvocation(MethodHandles.Lookup proxyLookup, String methodName, MethodType methodType, MethodHandle superMethod)
+            throws Throwable;
 }
