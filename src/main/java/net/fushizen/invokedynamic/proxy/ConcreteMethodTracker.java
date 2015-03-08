@@ -4,9 +4,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashSet;
 
-/**
- * Created by bd on 3/7/15.
- */
 class ConcreteMethodTracker {
     private HashSet<Method> contributors = new HashSet<>();
 

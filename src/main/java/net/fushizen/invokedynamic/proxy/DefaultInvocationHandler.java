@@ -2,9 +2,6 @@ package net.fushizen.invokedynamic.proxy;
 
 import java.lang.invoke.*;
 
-/**
- * Created by bd on 3/7/15.
- */
 class DefaultInvocationHandler implements DynamicInvocationHandler {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     private static final MethodHandle THROW_UNSUPPORTED;

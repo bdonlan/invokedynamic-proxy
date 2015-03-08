@@ -5,13 +5,9 @@ import org.junit.Test;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Constructor;
 
 import static org.junit.Assert.assertEquals;
 
-/**
- * Created by bd on 3/7/15.
- */
 public class DynamicProxySuperclassTests {
     @Test
     public void whenNoHandlerInstalled_canCallToString() throws Throwable {

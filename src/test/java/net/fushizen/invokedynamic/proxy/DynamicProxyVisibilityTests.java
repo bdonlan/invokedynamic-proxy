@@ -8,9 +8,6 @@ import java.lang.reflect.Modifier;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
-/**
- * Created by bd on 3/7/15.
- */
 public class DynamicProxyVisibilityTests {
     @Test(expected = NoSuchMethodException.class)
     public void whenFinalizerNotRequested_itIsNotCreated() throws Exception {

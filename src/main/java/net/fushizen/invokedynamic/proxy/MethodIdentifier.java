@@ -4,9 +4,6 @@ import org.objectweb.asm.Type;
 
 import java.util.Arrays;
 
-/**
- * Created by bd on 3/7/15.
- */
 class MethodIdentifier {
     private final String name;
     private final Class<?> returnType;

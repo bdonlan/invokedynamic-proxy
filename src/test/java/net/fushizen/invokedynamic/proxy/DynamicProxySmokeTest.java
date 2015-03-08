@@ -11,9 +11,6 @@ import java.util.concurrent.CountDownLatch;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Created by bd on 3/7/15.
- */
 public class DynamicProxySmokeTest {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 

@@ -1,6 +1,5 @@
 package net.fushizen.invokedynamic.proxy;
 
-import com.sun.org.apache.bcel.internal.generic.LOOKUPSWITCH;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -12,9 +11,6 @@ import java.lang.invoke.MethodType;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.when;
 
-/**
- * Created by bd on 3/7/15.
- */
 public class DynamicProxyArgAndReturnTests {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 

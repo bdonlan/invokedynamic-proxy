@@ -1,10 +1,6 @@
 package net.fushizen.invokedynamic.proxy;
 
-import com.oracle.webservices.internal.api.databinding.Databinding;
 import org.objectweb.asm.*;
-
-import static org.objectweb.asm.Opcodes.*;
-
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -17,9 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Created by bd on 3/7/15.
- */
+import static org.objectweb.asm.Opcodes.*;
+
 public class DynamicProxy {
     private static final AtomicInteger CLASS_COUNT = new AtomicInteger();
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
@@ -106,8 +101,8 @@ public class DynamicProxy {
             interfaceNames[i] = Type.getInternalName(builder.interfaces.get(i));
         }
 
-        cw.visit(Opcodes.V1_7,
-                Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL,
+        cw.visit(V1_7,
+                ACC_PUBLIC | ACC_FINAL,
                 classInternalName,
                 null,
                 superclassName,
@@ -288,7 +283,7 @@ public class DynamicProxy {
 
     private static void visitFields(ClassVisitor cw, Builder builder) {
         FieldVisitor fw = cw.visitField(
-                Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC,
+                ACC_PRIVATE | ACC_STATIC,
                 "$$handler",
                 Type.getDescriptor(DynamicInvocationHandler.class),
                 null,
@@ -331,7 +326,7 @@ public class DynamicProxy {
             mv.visitMethodInsn(INVOKESPECIAL, "java/lang/IllegalStateException", "<init>", "()V", false);
             mv.visitInsn(ATHROW);
             mv.visitLabel(l1);
-            mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
+            mv.visitFrame(F_SAME, 0, null, 0, null);
             mv.visitVarInsn(ALOAD, 0);
             mv.visitFieldInsn(PUTSTATIC,
                     classBinaryName,
@@ -426,11 +421,11 @@ public class DynamicProxy {
     }
 
     private static void visitCtor(ClassVisitor cw, String superclassName) {
-        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
         mv.visitCode();
-        mv.visitVarInsn(Opcodes.ALOAD, 0);
-        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, superclassName, "<init>", "()V", false);
-        mv.visitInsn(Opcodes.RETURN);
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitMethodInsn(INVOKESPECIAL, superclassName, "<init>", "()V", false);
+        mv.visitInsn(RETURN);
         mv.visitMaxs(1, 1);
         mv.visitEnd();
     }
