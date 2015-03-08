@@ -1,12 +1,10 @@
 package net.fushizen.invokedynamic.proxy;
 
 import org.objectweb.asm.*;
-import org.objectweb.asm.util.TraceClassVisitor;
 
 import static org.objectweb.asm.Opcodes.*;
 
 
-import java.io.PrintWriter;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -15,6 +13,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -50,6 +49,7 @@ public class DynamicProxy {
         private Class<?> superclass = Object.class;
         private ArrayList<Class<?>> interfaces = new ArrayList<>();
         private DynamicInvocationHandler invocationHandler = new DefaultInvocationHandler();
+        private boolean hasFinalizer = false;
 
         public Builder withInterfaces(Class<?>... interfaces) {
             this.interfaces.addAll(Arrays.asList(interfaces));
@@ -59,6 +59,12 @@ public class DynamicProxy {
 
         public Builder withInvocationHandler(DynamicInvocationHandler handler) {
             invocationHandler = handler;
+
+            return this;
+        }
+
+        public Builder withFinalizer() {
+            hasFinalizer = true;
 
             return this;
         }
@@ -104,9 +110,9 @@ public class DynamicProxy {
 
         HashMap<MethodIdentifier, ArrayList<Class<?>>> methods = new HashMap<>();
         for (Class<?> interfaceClass : builder.interfaces) {
-            collectMethods(interfaceClass, methods);
+            collectMethods(interfaceClass, builder, methods);
         }
-        collectMethods(builder.superclass, methods);
+        collectMethods(builder.superclass, builder, methods);
 
         visitMethods(cw, classInternalName, methods);
 
@@ -119,13 +125,33 @@ public class DynamicProxy {
     }
 
     private static void visitMethods(ClassVisitor cw, String classInternalName, HashMap<MethodIdentifier, ArrayList<Class<?>>> methods) {
-        for (MethodIdentifier method : methods.keySet()) {
-            emitMethod(cw, classInternalName, method);
-        }
+        methods.forEach((method, contributors) -> emitMethod(cw, classInternalName, method, contributors));
     }
 
-    private static void emitMethod(ClassVisitor cw, String classInternalName, MethodIdentifier method) {
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC,
+    private static void emitMethod(
+            ClassVisitor cw,
+            String classInternalName,
+            MethodIdentifier method,
+            List<Class<?>> contributors
+    ) {
+        int access = ACC_PROTECTED;
+
+        for (Class<?> contributor : contributors) {
+            Method m = null;
+            try {
+                m = contributor.getDeclaredMethod(method.getName(), method.getArgs());
+            } catch (NoSuchMethodException e) {
+                throw new NoSuchMethodError(e.getMessage());
+            }
+
+            if (Modifier.PUBLIC == (m.getModifiers() & Modifier.PUBLIC)) {
+                access = ACC_PUBLIC;
+                break;
+            }
+        }
+
+        MethodVisitor mv = cw.visitMethod(
+                access,
                 method.getName(),
                 method.getDescriptor(),
                 null,
@@ -328,9 +354,9 @@ public class DynamicProxy {
         }
     }
 
-    private static void collectMethods(Class<?> klass, HashMap<MethodIdentifier, ArrayList<Class<?>>> methods) {
+    private static void collectMethods(Class<?> klass, Builder builder, HashMap<MethodIdentifier, ArrayList<Class<?>>> methods) {
         if (klass.getSuperclass() != null && klass != Object.class) {
-            collectMethods(klass.getSuperclass(), methods);
+            collectMethods(klass.getSuperclass(), builder, methods);
         }
 
         for (Method m : klass.getDeclaredMethods()) {
@@ -340,6 +366,11 @@ public class DynamicProxy {
 
             if (0 != (m.getModifiers() & Modifier.FINAL)) {
                 continue; // Can't override FINAL methods
+            }
+
+            if (klass == Object.class && m.getName().equals("finalize") && !builder.hasFinalizer) {
+                // Creating this method has a performance hit, so only do it if requested
+                continue;
             }
 
             MethodIdentifier identifier = new MethodIdentifier(m.getName(), m.getReturnType(), m.getParameterTypes());

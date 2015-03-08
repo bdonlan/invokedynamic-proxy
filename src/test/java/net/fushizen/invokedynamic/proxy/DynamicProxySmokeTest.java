@@ -1,19 +1,12 @@
 package net.fushizen.invokedynamic.proxy;
 
 import org.junit.Test;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.util.ASMifier;
-import org.objectweb.asm.util.TraceClassVisitor;
 
-import java.io.PrintWriter;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.InvocationHandler;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -21,7 +14,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Created by bd on 3/7/15.
  */
-public class ProxyTest {
+public class DynamicProxySmokeTest {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
     public interface TrivialInterface {}
