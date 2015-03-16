@@ -79,6 +79,10 @@ public class DynamicProxy {
         private boolean hasFinalizer = false;
 
         public Builder withInterfaces(Class<?>... interfaces) {
+            for (Class<?> klass : interfaces) {
+                if (!klass.isInterface()) throw new IllegalArgumentException("" + klass + " is not an interface");
+            }
+
             this.interfaces.addAll(Arrays.asList(interfaces));
 
             return this;
@@ -106,8 +110,12 @@ public class DynamicProxy {
          * @param klass
          * @return
          * @throws NoSuchMethodException If a suitable constructor is not found
+         * @throws java.lang.IllegalArgumentException if klass is not a class
          */
         public Builder withSuperclass(Class<?> klass) throws NoSuchMethodException {
+            if (klass.isInterface()) throw new IllegalArgumentException("" + klass + " is an interface");
+            if ((klass.getModifiers() & Modifier.FINAL) != 0) throw new IllegalArgumentException("" + klass + " is final");
+
             klass.getConstructor();
 
             superclass = klass;
