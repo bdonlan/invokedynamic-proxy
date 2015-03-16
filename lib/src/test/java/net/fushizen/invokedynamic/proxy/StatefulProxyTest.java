@@ -33,7 +33,15 @@ public class StatefulProxyTest {
             MethodHandle mh;
 
             if (superMethod != null) {
+                // If there's a supermethod implementation, this is probably some Object method. Pass it through to the
+                // superclass so our IDE doesn't have problems doing toString or something.
+
+                // Note that we call asType to coerce the methodhandle type - this is because the supermethod probably
+                // wants Object as its first argument, while we'll be getting proxyType, and invokedynamic demands that
+                // we have an exact type match.
                 mh = superMethod.asType(type);
+
+                // The Counter methods have no concrete supermethod, so we'll fall through to one of these branches:
             } else if (name.equals("increment")) {
                 mh = lookup.findSpecial(
                         StateSuperclass.class,
@@ -49,6 +57,7 @@ public class StatefulProxyTest {
                         proxyType
                 ).asType(type); // downcast the 'this' parameter
             } else {
+                // How did we get here? Oh well, have a LinkageError.
                 throw new UnsupportedOperationException();
             }
 
