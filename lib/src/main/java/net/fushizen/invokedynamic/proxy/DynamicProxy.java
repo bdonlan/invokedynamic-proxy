@@ -5,6 +5,7 @@ import org.objectweb.asm.*;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.UndeclaredThrowableException;
@@ -77,15 +78,34 @@ public class DynamicProxy {
         private ArrayList<Class<?>> interfaces = new ArrayList<>();
         private DynamicInvocationHandler invocationHandler = new DefaultInvocationHandler();
         private boolean hasFinalizer = false;
+        private String packageName;
 
         public Builder withInterfaces(Class<?>... interfaces) {
             for (Class<?> klass : interfaces) {
                 if (!klass.isInterface()) throw new IllegalArgumentException("" + klass + " is not an interface");
+
+                if ((klass.getModifiers() & Modifier.PUBLIC) == 0) {
+                    packageFromClass(klass);
+                }
             }
 
             this.interfaces.addAll(Arrays.asList(interfaces));
 
             return this;
+        }
+
+        private void packageFromClass(Class<?> klass) {
+            if ((klass.getModifiers() & Modifier.PRIVATE) != 0) {
+                throw new IllegalArgumentException("Cannot extend private interface or superclass " + klass);
+            }
+
+            String klassPackage = klass.getPackage().getName();
+
+            if (packageName != null && !packageName.equals(klassPackage)) {
+                throw new IllegalArgumentException("Cannot access private interfaces or superclasses from multiple packages");
+            }
+
+            packageName = klassPackage;
         }
 
         public Builder withInvocationHandler(DynamicInvocationHandler handler) {
@@ -116,7 +136,18 @@ public class DynamicProxy {
             if (klass.isInterface()) throw new IllegalArgumentException("" + klass + " is an interface");
             if ((klass.getModifiers() & Modifier.FINAL) != 0) throw new IllegalArgumentException("" + klass + " is final");
 
-            klass.getConstructor();
+            if ((klass.getModifiers() & Modifier.PUBLIC) == 0) {
+                packageFromClass(klass);
+            }
+
+            Constructor ctor = klass.getDeclaredConstructor();
+            if ((ctor.getModifiers() & Modifier.PUBLIC) == 0) {
+                if ((ctor.getModifiers() & Modifier.PRIVATE) != 0) {
+                    throw new IllegalArgumentException("Constructor " + ctor + " is private");
+                }
+
+                packageFromClass(klass);
+            }
 
             superclass = klass;
 
@@ -142,8 +173,13 @@ public class DynamicProxy {
     private static Class<?> generateProxyClass(Builder builder) {
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
 
-        String classInternalName = String.format("net/fushizen/invokedynamic/proxy/generated/Proxy$%d",
-                CLASS_COUNT.incrementAndGet());
+        String packageInternalName = builder.packageName;
+        if (packageInternalName == null) {
+            packageInternalName = "net.fushizen.invokedynamic.proxy.generated";
+        }
+        packageInternalName = packageInternalName.replaceAll("\\.", "/");
+
+        String classInternalName = String.format("%s/Proxy$%d", packageInternalName, CLASS_COUNT.incrementAndGet());
         String superclassName = Type.getInternalName(builder.superclass);
         String[] interfaceNames = new String[builder.interfaces.size()];
         for (int i = 0; i < builder.interfaces.size(); i++) {
