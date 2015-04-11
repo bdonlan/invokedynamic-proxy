@@ -1,14 +1,12 @@
 package net.fushizen.invokedynamic.proxy;
 
 import org.objectweb.asm.*;
+import org.objectweb.asm.Type;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.UndeclaredThrowableException;
+import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -79,6 +77,8 @@ public class DynamicProxy {
         private DynamicInvocationHandler invocationHandler = new DefaultInvocationHandler();
         private boolean hasFinalizer = false;
         private String packageName;
+        private boolean hasNonAccessibleSupers = false;
+        private ClassLoader parentLoader = null;
 
         public Builder withInterfaces(Class<?>... interfaces) {
             for (Class<?> klass : interfaces) {
@@ -99,12 +99,19 @@ public class DynamicProxy {
                 throw new IllegalArgumentException("Cannot extend private interface or superclass " + klass);
             }
 
+            hasNonAccessibleSupers = true;
+
             String klassPackage = klass.getPackage().getName();
 
             if (packageName != null && !packageName.equals(klassPackage)) {
                 throw new IllegalArgumentException("Cannot access private interfaces or superclasses from multiple packages");
             }
 
+            if (parentLoader != null && parentLoader != klass.getClassLoader()) {
+                throw new IllegalArgumentException("Cannot access non-public supers from multiple class loaders");
+            }
+
+            parentLoader = klass.getClassLoader();
             packageName = klassPackage;
         }
 
@@ -170,7 +177,7 @@ public class DynamicProxy {
         }
     }
 
-    private static Class<?> generateProxyClass(Builder builder) {
+    private static Class<?> generateProxyClass(Builder builder) throws Exception {
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
 
         String packageInternalName = builder.packageName;
@@ -186,8 +193,8 @@ public class DynamicProxy {
             interfaceNames[i] = Type.getInternalName(builder.interfaces.get(i));
         }
 
-        cw.visit(V1_7,
-                ACC_PUBLIC | ACC_FINAL,
+        cw.visit(V1_8,
+                ACC_PUBLIC | ACC_FINAL | ACC_SUPER,
                 classInternalName,
                 null,
                 superclassName,
@@ -209,8 +216,33 @@ public class DynamicProxy {
 
         byte[] classData = cw.toByteArray();
 
-        ProxyLoader loader = new ProxyLoader(DynamicProxy.class.getClassLoader());
-        return loader.loadClass(classData);
+        return loadClass(builder.parentLoader, classData);
+    }
+
+    private static Class<?> loadClass(ClassLoader parentLoader, byte[] classData) throws Exception {
+        if (parentLoader == null) {
+            ProxyLoader loader = new ProxyLoader(DynamicProxy.class.getClassLoader());
+            return loader.loadClass(classData);
+        } else {
+            // In order to access package-private superclasses, we need to be in the same classloader. So use reflection
+            // to force our way in...
+
+            Method DEFINE_CLASS = ClassLoader.class.getDeclaredMethod("defineClass", new Class[] {
+                    String.class,
+                    byte[].class,
+                    Integer.TYPE,
+                    Integer.TYPE
+            });
+
+            DEFINE_CLASS.setAccessible(true); // this will fail if any SecurityManager is installed
+
+            try {
+                return (Class<?>) DEFINE_CLASS.invoke(parentLoader, null, classData, 0, classData.length);
+            } catch (InvocationTargetException e) {
+                if (e.getCause() instanceof Exception) throw (Exception)e.getCause();
+                throw e;
+            }
+        }
     }
 
     private static void visitMethods(ClassVisitor cw, String classInternalName, HashMap<MethodIdentifier, ArrayList<Method>> methods) {

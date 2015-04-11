@@ -121,6 +121,12 @@
         </dependency>
         <dependency>
             <groupId>org.ow2.asm</groupId>
+            <artifactId>asm-all</artifactId>
+            <version>5.0.3</version>
+            <optional>true</optional> <!-- used only in tests and ad-hoc debugging -->
+        </dependency>
+        <dependency>
+            <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
             <version>5.0.3</version>
         </dependency>

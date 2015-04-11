@@ -3,6 +3,10 @@ package net.fushizen.invokedynamic.proxy;
 import net.fushizen.invokedynamic.proxy.otherpackage.Helper;
 import org.junit.Test;
 
+interface PackagePrivateInterface {}
+
+class PackagePrivateSuperclass {}
+
 public class PrivateAccessTests {
     protected interface ProtectedInterface {
     }
@@ -27,5 +31,11 @@ public class PrivateAccessTests {
     @Test(expected = IllegalArgumentException.class)
     public void testMultiplePackageProtectedClasses() throws Exception {
         DynamicProxy.builder().withSuperclass(Helper.getSuperclass()).withInterfaces(ProtectedInterface.class);
+    }
+
+    @Test
+    public void testPackagePrivateSupers() throws Exception {
+        DynamicProxy.builder().withSuperclass(PackagePrivateSuperclass.class).build();
+        DynamicProxy.builder().withInterfaces(PackagePrivateInterface.class).build();
     }
 }
