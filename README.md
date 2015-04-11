@@ -62,4 +62,4 @@ just for the security support.
 
 Copyright © 2015 Bryan Donlan
 
-Distributed under the 2-clause BSD license.
+Distributed under the CC0 license.
