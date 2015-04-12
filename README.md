@@ -3,6 +3,8 @@
 An alternate to the built-in Java Proxy; uses Java 7 features and invokedynamic to provide better performance and access
 to features unavailable through standard Proxies.
 
+Get it from [Maven](http://search.maven.org/#artifactdetails|net.fushizen.invokedynamic.proxy|invokedynamic-proxy|1.0.1|jar)
+
 ## Usage
 
     public class Demo {
