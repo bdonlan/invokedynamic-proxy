@@ -58,4 +58,19 @@ public class DynamicProxySmokeTest {
 
         assertEquals(0, latch.getCount());
     }
+
+    @Test
+    public void testCustomPackage() throws Exception {
+        Object o = DynamicProxy.builder().withPackageName("a.b.c.d").build().supplier().get();
+
+        Class<?> aClass = o.getClass();
+        assertEquals("a.b.c.d", aClass.getName().replaceFirst("\\.DynamicProxy.*", ""));
+    }
+
+    @Test
+    public void testCustomName() throws Exception {
+        Object o = DynamicProxy.builder().withClassName("ThisIsATestClassName").build().supplier().get();
+
+        assertTrue(o.getClass().getName().endsWith(".ThisIsATestClassName"));
+    }
 }

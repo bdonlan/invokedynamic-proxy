@@ -38,4 +38,19 @@ public class PrivateAccessTests {
         DynamicProxy.builder().withSuperclass(PackagePrivateSuperclass.class).build();
         DynamicProxy.builder().withInterfaces(PackagePrivateInterface.class).build();
     }
+
+    @Test(expected = IllegalStateException.class)
+    public void testWrongPackagePrivateSupers_wrongCustomPackageAfter() throws Exception {
+        DynamicProxy.builder().withSuperclass(PackagePrivateSuperclass.class).withPackageName("a.b.c.d");
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testWrongPackagePrivateSupers_wrongCustomPackageBefore() throws Exception {
+        DynamicProxy.builder().withPackageName("a.b.c.d").withSuperclass(PackagePrivateSuperclass.class);
+    }
+
+    @Test
+    public void testWrongPackagePrivateSupers_correctCustomPackage() throws Exception {
+        DynamicProxy.builder().withPackageName("net.fushizen.invokedynamic.proxy").withSuperclass(PackagePrivateSuperclass.class);
+    }
 }

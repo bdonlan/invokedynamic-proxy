@@ -76,8 +76,8 @@ public class DynamicProxy {
         private ArrayList<Class<?>> interfaces = new ArrayList<>();
         private DynamicInvocationHandler invocationHandler = new DefaultInvocationHandler();
         private boolean hasFinalizer = false;
-        private String packageName;
-        private boolean hasNonAccessibleSupers = false;
+        private String packageName, className;
+        private boolean hasNonAccessibleSupers = false, hasCustomPackageName = false;
         private ClassLoader parentLoader = null;
 
         public Builder withInterfaces(Class<?>... interfaces) {
@@ -94,6 +94,29 @@ public class DynamicProxy {
             return this;
         }
 
+        public Builder withPackageName(String packageName) {
+            if (this.packageName != null && !packageName.equals(this.packageName)) {
+                if (hasCustomPackageName) {
+                    throw new IllegalStateException("Can't set package name to two different values");
+                } else {
+                    throw new IllegalStateException("Package name must be " + this.packageName + " to access superclasses");
+                }
+            }
+
+            this.packageName = packageName;
+            hasCustomPackageName = true;
+
+            return this;
+        }
+
+        public Builder withClassName(String className) {
+            if (this.className != null) throw new IllegalStateException("Can't set class name twice");
+
+            this.className = className;
+
+            return this;
+        }
+
         private void packageFromClass(Class<?> klass) {
             if ((klass.getModifiers() & Modifier.PRIVATE) != 0) {
                 throw new IllegalArgumentException("Cannot extend private interface or superclass " + klass);
@@ -104,11 +127,15 @@ public class DynamicProxy {
             String klassPackage = klass.getPackage().getName();
 
             if (packageName != null && !packageName.equals(klassPackage)) {
-                throw new IllegalArgumentException("Cannot access private interfaces or superclasses from multiple packages");
+                if (hasCustomPackageName) {
+                    throw new IllegalStateException("Cannot access non-public interfaces or superclasses from a different package");
+                } else {
+                    throw new IllegalArgumentException("Cannot access non-public interfaces or superclasses from multiple packages");
+                }
             }
 
             if (parentLoader != null && parentLoader != klass.getClassLoader()) {
-                throw new IllegalArgumentException("Cannot access non-public supers from multiple class loaders");
+                throw new IllegalArgumentException("Cannot access non-public interfaces or superclasses from multiple class loaders");
             }
 
             parentLoader = klass.getClassLoader();
@@ -186,7 +213,13 @@ public class DynamicProxy {
         }
         packageInternalName = packageInternalName.replaceAll("\\.", "/");
 
-        String classInternalName = String.format("%s/Proxy$%d", packageInternalName, CLASS_COUNT.incrementAndGet());
+        String className = builder.className;
+
+        if (className == null) {
+            className = String.format("DynamicProxy$$%d", CLASS_COUNT.incrementAndGet());
+        }
+
+        String classInternalName = packageInternalName + "/" + className;
         String superclassName = Type.getInternalName(builder.superclass);
         String[] interfaceNames = new String[builder.interfaces.size()];
         for (int i = 0; i < builder.interfaces.size(); i++) {
