@@ -120,10 +120,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!-- Pull in asm-util and etc for tests and ad-hoc debugging convenience -->
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm-all</artifactId>
             <version>5.0.3</version>
-            <optional>true</optional> <!-- used only in tests and ad-hoc debugging -->
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.ow2.asm</groupId>
