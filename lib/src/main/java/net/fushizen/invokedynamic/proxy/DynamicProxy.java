@@ -79,6 +79,7 @@ public class DynamicProxy {
         private String packageName, className;
         private boolean hasNonAccessibleSupers = false, hasCustomPackageName = false;
         private ClassLoader parentLoader = null;
+        private Class[] ctorArgs = new Class[0];
 
         public Builder withInterfaces(Class<?>... interfaces) {
             for (Class<?> klass : interfaces) {
@@ -94,6 +95,24 @@ public class DynamicProxy {
             return this;
         }
 
+        /**
+         * Selects an alternate constructor.
+         *
+         * @param args
+         * @return
+         */
+        public Builder withConstructor(Class... args) {
+            ctorArgs = args.clone();
+
+            return this;
+        }
+
+        /**
+         * Sets a custom package name. If any superclasses, interfaces, or the superclass constructor are non-public,
+         * then the only allowable package name is the package of that superclass or interface.
+         * @param packageName
+         * @return
+         */
         public Builder withPackageName(String packageName) {
             if (this.packageName != null && !packageName.equals(this.packageName)) {
                 if (hasCustomPackageName) {
@@ -109,6 +128,12 @@ public class DynamicProxy {
             return this;
         }
 
+        /**
+         * Sets a custom class name. Strange things will happen if you use the same name twice.
+         *
+         * @param className
+         * @return
+         */
         public Builder withClassName(String className) {
             if (this.className != null) throw new IllegalStateException("Can't set class name twice");
 
@@ -174,23 +199,31 @@ public class DynamicProxy {
                 packageFromClass(klass);
             }
 
-            Constructor ctor = klass.getDeclaredConstructor();
-            if ((ctor.getModifiers() & Modifier.PUBLIC) == 0) {
-                if ((ctor.getModifiers() & Modifier.PRIVATE) != 0) {
-                    throw new IllegalArgumentException("Constructor " + ctor + " is private");
-                }
-
-                packageFromClass(klass);
-            }
-
             superclass = klass;
 
             return this;
         }
 
+        private Constructor checkSuperclassConstructor() throws NoSuchMethodException {
+            Constructor ctor = superclass.getDeclaredConstructor(ctorArgs);
+
+            if ((ctor.getModifiers() & Modifier.PUBLIC) == 0) {
+                if ((ctor.getModifiers() & Modifier.PRIVATE) != 0) {
+                    throw new IllegalArgumentException("Constructor " + ctor + " is private");
+                }
+
+                packageFromClass(superclass);
+            }
+
+            return ctor;
+        }
+
         public DynamicProxy build() throws Exception {
+            // we'll do this again later, but do it now to make sure the package is set appropriately
+            checkSuperclassConstructor();
+
             Class<?> proxyClass = generateProxyClass(this);
-            MethodHandle constructor = LOOKUP.findConstructor(proxyClass, MethodType.methodType(Void.TYPE));
+            MethodHandle constructor = LOOKUP.findConstructor(proxyClass, MethodType.methodType(Void.TYPE, ctorArgs));
 
             MethodHandle init = LOOKUP.findStatic(proxyClass, INIT_PROXY_METHOD_NAME, MethodType.methodType(Void.TYPE, DynamicInvocationHandler.class));
 
@@ -234,7 +267,7 @@ public class DynamicProxy {
                 interfaceNames);
 
         visitFields(cw, builder);
-        visitCtor(cw, superclassName);
+        visitCtor(cw, superclassName, builder.checkSuperclassConstructor());
         visitInternalMethods(cw, classInternalName, builder);
 
         HashMap<MethodIdentifier, ArrayList<Method>> methods = new HashMap<>();
@@ -320,28 +353,7 @@ public class DynamicProxy {
 
         int argIndex = 1;
         for (Class<?> argKlass : method.getArgs()) {
-            switch (typeIdentifier(argKlass)) {
-                case 'I':
-                    mv.visitVarInsn(ILOAD, argIndex);
-                    break;
-                case 'L':
-                    mv.visitVarInsn(LLOAD, argIndex);
-                    argIndex++; // longs use two variable indexes
-                    break;
-                case 'F':
-                    mv.visitVarInsn(FLOAD, argIndex);
-                    break;
-                case 'D':
-                    mv.visitVarInsn(DLOAD, argIndex);
-                    argIndex++; // doubles use two variable indexes
-                    break;
-                case 'A':
-                    mv.visitVarInsn(ALOAD, argIndex);
-                    break;
-                default:
-                    throw new UnsupportedOperationException(); // should never happen
-            }
-            argIndex++;
+            argIndex += visitLoadArg(mv, argIndex, argKlass);
 
             descriptorArgs.add(Type.getType(argKlass));
         }
@@ -402,6 +414,32 @@ public class DynamicProxy {
 
         mv.visitMaxs(argIndex, argIndex);
         mv.visitEnd();
+    }
+
+    private static int visitLoadArg(MethodVisitor mv, int argIndex, Class<?> argKlass) {
+        int slots = 1;
+        switch (typeIdentifier(argKlass)) {
+            case 'I':
+                mv.visitVarInsn(ILOAD, argIndex);
+                break;
+            case 'L':
+                mv.visitVarInsn(LLOAD, argIndex);
+                slots = 2; // longs use two variable indexes
+                break;
+            case 'F':
+                mv.visitVarInsn(FLOAD, argIndex);
+                break;
+            case 'D':
+                mv.visitVarInsn(DLOAD, argIndex);
+                slots = 2; // doubles use two variable indexes
+                break;
+            case 'A':
+                mv.visitVarInsn(ALOAD, argIndex);
+                break;
+            default:
+                throw new UnsupportedOperationException(); // should never happen
+        }
+        return slots;
     }
 
     private static char typeIdentifier(Class<?> argKlass) {
@@ -567,13 +605,23 @@ public class DynamicProxy {
         }
     }
 
-    private static void visitCtor(ClassVisitor cw, String superclassName) {
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+    private static void visitCtor(ClassVisitor cw, String superclassName, Constructor ctor) {
+        String descriptor = Type.getConstructorDescriptor(ctor);
+
+        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", descriptor, null, null);
         mv.visitCode();
         mv.visitVarInsn(ALOAD, 0);
-        mv.visitMethodInsn(INVOKESPECIAL, superclassName, "<init>", "()V", false);
+
+        int slotIndex = 1;
+
+        Class[] args = ctor.getParameterTypes();
+        for (int i = 0; i < args.length; i++) {
+            slotIndex += visitLoadArg(mv, slotIndex, args[i]);
+        }
+
+        mv.visitMethodInsn(INVOKESPECIAL, superclassName, "<init>", descriptor, false);
         mv.visitInsn(RETURN);
-        mv.visitMaxs(1, 1);
+        mv.visitMaxs(slotIndex, slotIndex);
         mv.visitEnd();
     }
 
