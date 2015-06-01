@@ -67,6 +67,16 @@ public class DynamicProxy {
         };
     }
 
+    public <T> T construct(Object... args) {
+        try {
+            return (T) constructor().invoke(args);
+        } catch (Error | RuntimeException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw new UndeclaredThrowableException(t);
+        }
+    }
+
     public static Builder builder() {
         return new Builder();
     }
