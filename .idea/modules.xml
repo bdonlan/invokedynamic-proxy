@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/lib/invokedynamic-proxy.iml" filepath="$PROJECT_DIR$/lib/invokedynamic-proxy.iml" />
+      <module fileurl="file://$PROJECT_DIR$/invokedynamic-proxy-pom.iml" filepath="$PROJECT_DIR$/invokedynamic-proxy-pom.iml" />
+      <module fileurl="file://$PROJECT_DIR$/jmh-benchmark/jmh-benchmark.iml" filepath="$PROJECT_DIR$/jmh-benchmark/jmh-benchmark.iml" />
+    </modules>
+  </component>
+</project>
