@@ -152,19 +152,57 @@ public class DynamicProxySuperclassTests {
     }
 
     @Test
-    public void indirectSuperinterfaceDefaultMethodTest() throws Throwable {
-        C c = (C) DynamicProxy.builder()
+    public void whenDefaultMethodIsAccessibleThroughSuperclass_noErrorThrown() throws Throwable {
+        B b = (B) DynamicProxy.builder()
                 .withSuperclass(C.class)
                 .withInterfaces(B.class)
                 .withInvocationHandler((lookup, name, superType, superMethod) -> new ConstantCallSite(superMethod.asType(superType)))
                 .build()
                 .supplier()
                 .get();
-        c.method();
+        b.method();
+    }
+
+    @Test
+    public void whenDefaultMethodIsAccessibleThroughSuperinterface_noErrorThrown() throws Throwable {
+        B b = (B) DynamicProxy.builder()
+                .withInterfaces(B.class)
+                .withInvocationHandler((lookup, name, superType, superMethod) -> new ConstantCallSite(superMethod.asType(superType)))
+                .build()
+                .supplier()
+                .get();
+        b.method();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void whenDefaultMethodProviderIsInaccessible_exceptionThrown() throws Exception {
+        DynamicProxy.builder()
+                .withInterfaces(PB.class)
+                .withInvocationHandler((lookup, name, superType, superMethod) -> new ConstantCallSite(superMethod.asType(superType)))
+                .build();
+    }
+
+    @Test
+    public void whenDefaultMethodProviderIsInaccessible_andPackageSet_noExceptionThrown() throws Exception {
+        DynamicProxy.builder()
+                .withInterfaces(PB.class)
+                .withInvocationHandler((lookup, name, superType, superMethod) -> new ConstantCallSite(superMethod.asType(superType)))
+                .withPackageName(A.class.getPackage().getName())
+                .build();
+    }
+
+    @Test
+    public void whenDefaultMethodProviderIsInaccessible_andPackageSetImplicitly_noExceptionThrown() throws Exception {
+        DynamicProxy.builder()
+                .withInterfaces(PB.class, D.class)
+                .withInvocationHandler((lookup, name, superType, superMethod) -> new ConstantCallSite(superMethod.asType(superType)))
+                .build();
     }
 
     interface A { default void method() { } }
     interface B extends A {}
     public abstract static class C implements B {
     }
+    public interface PB extends A {};
+    interface D {}
 }

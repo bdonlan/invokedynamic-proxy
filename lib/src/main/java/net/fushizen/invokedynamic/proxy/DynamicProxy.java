@@ -7,11 +7,9 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static org.objectweb.asm.Opcodes.*;
@@ -235,7 +233,87 @@ public class DynamicProxy {
             return ctor;
         }
 
+        private void injectSuperinterfaces() {
+            /*
+             * If we have a superclass C which implements interface I, and I contains a method with a default
+             * implementation, then we will be unable to access this supermethod due to JVM constraints. Specifically:
+             *
+             * JVM spec §4.9.2;
+             * Each invokespecial instruction must name an instance initialization method (§2.9), a method in the
+             * current class or interface, a method in a superclass of the current class, a method in a direct
+             * superinterface of the current class or interface, or a method in Object.
+             *
+             * To resolve this, we'll walk the superclass chain, checking for interfaces with default methods. If found,
+             * we'll attempt to add the interface to this class. Note that if this is a private interface in a different
+             * package, this requires us to be in the same package; to avoid overly surprising behavior we'll allow this
+             * to happen if the user has already put us in that package, either by explicitly referencing an interface
+             * or superclass in that package or by setting the package name explicitly.
+             */
+
+            HashSet<Class<?>> neededInterfaces = new HashSet<>();
+
+            walkSupers(superclass, klass -> maybeAddDefaultingInterface(neededInterfaces, klass));
+
+            for (Class<?> iface : interfaces) {
+                walkSupers(iface, klass -> maybeAddDefaultingInterface(neededInterfaces, klass));
+            }
+
+            neededInterfaces.removeAll(interfaces);
+
+            for (Class<?> klass : neededInterfaces) {
+                if ((klass.getModifiers() & Modifier.PUBLIC) == 0) {
+                    if (!klass.getPackage().getName().equals(packageName)) {
+                        throw new IllegalArgumentException(
+                                String.format(
+                                        "Interface %s is required to access default methods, but it is " +
+                                                "inaccessible. Add it explicitly, or set your package to %s.",
+                                        klass.getTypeName(), klass.getPackage().getName())
+                        );
+                    } else {
+                        // We're in the right package, but if the user explicitly set it we're not configured to access
+                        // package-private classes yet. So make sure to go through the whole song and dance here as
+                        // well.
+                        packageFromClass(klass);
+                    }
+                }
+            }
+
+            interfaces.addAll(neededInterfaces);
+        }
+
+        private void maybeAddDefaultingInterface(HashSet<Class<?>> neededInterfaces, Class<?> klass) {
+            if (klass.isInterface() && interfaceHasDefaultMethods(klass)) {
+                neededInterfaces.add(klass);
+            }
+        }
+
+        private boolean interfaceHasDefaultMethods(Class<?> iface) {
+            for (Method m : iface.getMethods()) {
+                if (m.isDefault()) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void walkSupers(Class<?> klass, Consumer<Class<?>> ifaceConsumer) {
+            ifaceConsumer.accept(klass);
+
+            if (klass == Object.class) return;
+
+            if (klass.getSuperclass() != null) {
+                walkSupers(klass.getSuperclass(), ifaceConsumer);
+            }
+
+            for (Class<?> superIface : klass.getInterfaces()) {
+                walkSupers(superIface, ifaceConsumer);
+            }
+        }
+
         public DynamicProxy build() throws Exception {
+            injectSuperinterfaces();
+
             // we'll do this again later, but do it now to make sure the package is set appropriately
             checkSuperclassConstructor();
 
