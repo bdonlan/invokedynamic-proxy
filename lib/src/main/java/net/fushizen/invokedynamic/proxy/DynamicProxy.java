@@ -67,6 +67,13 @@ public class DynamicProxy {
         };
     }
 
+    /**
+     * Constructs an instance of this dynamic proxy directly. The return value of this method is not type-checked at
+     * compile time.
+     *
+     * @param args Constructor arguments (passed through to the superclass ctor)
+     * @return A new instance of the proxy
+     */
     public <T> T construct(Object... args) {
         try {
             return (T) constructor().invoke(args);
