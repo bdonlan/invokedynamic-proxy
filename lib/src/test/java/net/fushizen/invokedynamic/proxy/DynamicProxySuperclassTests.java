@@ -69,7 +69,7 @@ public class DynamicProxySuperclassTests {
 
     @Test
     public void whenAbstractVariantsAvailable_callIsNotAmbiguous() throws Throwable {
-        I1 obj = (I1) DynamicProxy.builder().withInterfaces(I1.class, I3.class).build().constructor().invoke();
+        I1 obj = DynamicProxy.builder().withInterfaces(I1.class, I3.class).build().construct();
 
         obj.foo();
     }
@@ -83,7 +83,7 @@ public class DynamicProxySuperclassTests {
 
     @Test
     public void whenSuperclassOverridesDefault_callIsNotAmbiguous() throws Throwable {
-        I1 obj = (I1) DynamicProxy.builder().withSuperclass(Inheritor.class).build().constructor().invoke();
+        I1 obj = DynamicProxy.builder().withSuperclass(Inheritor.class).build().construct();
 
         assertEquals("bar", obj.foo());
     }
@@ -97,14 +97,14 @@ public class DynamicProxySuperclassTests {
 
     @Test
     public void whenSuperclassOverridesSupersuper_callIsNotAmbiguous() throws Throwable {
-        I1 obj = (I1) DynamicProxy.builder().withSuperclass(Inheritor2.class).build().constructor().invoke();
+        I1 obj = DynamicProxy.builder().withSuperclass(Inheritor2.class).build().construct();
 
         assertEquals("baz", obj.foo());
     }
 
     @Test(expected = UnsupportedOperationException.class)
     public void whenSuperclassAndUnrelatedDefaultPresent_callIsAmbiguous() throws Throwable {
-        I1 obj = (I1) DynamicProxy.builder().withSuperclass(Inheritor2.class).withInterfaces(I2.class).build().constructor().invoke();
+        I1 obj = DynamicProxy.builder().withSuperclass(Inheritor2.class).withInterfaces(I2.class).build().construct();
 
         obj.foo();
     }
@@ -115,7 +115,7 @@ public class DynamicProxySuperclassTests {
 
     @Test(expected = UnsupportedOperationException.class)
     public void whenSuperclassImplementsInterface_interfaceMethodsAreProxied() throws Throwable {
-        Inheritor3 obj = (Inheritor3) DynamicProxy.builder().withSuperclass(Inheritor3.class).build().constructor().invoke();
+        Inheritor3 obj = DynamicProxy.builder().withSuperclass(Inheritor3.class).build().construct();
 
         obj.foo();
     }
@@ -141,12 +141,11 @@ public class DynamicProxySuperclassTests {
                 )
         );
 
-        IFaceC obj = (IFaceC)DynamicProxy.builder()
+        IFaceC obj = DynamicProxy.builder()
                 .withInvocationHandler(handler)
                 .withInterfaces(IFaceC.class)
                 .build()
-                .constructor()
-                .invoke();
+                .construct();
 
         obj.a();
         obj.b();

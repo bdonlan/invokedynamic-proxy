@@ -2,8 +2,6 @@ package net.fushizen.invokedynamic.proxy;
 
 import org.junit.Test;
 
-import java.lang.invoke.MethodHandle;
-
 import static org.junit.Assert.assertEquals;
 
 public class ArbitraryConstructorTests {
@@ -31,7 +29,7 @@ public class ArbitraryConstructorTests {
 
     @Test
     public void testArbitraryConstructor() throws Throwable {
-        MethodHandle ctor = DynamicProxy.builder()
+        DynamicProxy dynamicProxy = DynamicProxy.builder()
                 .withSuperclass(Superclass.class)
                 .withConstructor(
                         Boolean.TYPE,
@@ -43,10 +41,9 @@ public class ArbitraryConstructorTests {
                         Double.TYPE,
                         Object.class
                 )
-                .build()
-                .constructor();
+                .build();
 
-        Superclass obj = (Superclass)(Object)ctor.invoke(
+        Superclass obj = dynamicProxy.construct(
                 true,
                 'a',
                 (short)1234,
