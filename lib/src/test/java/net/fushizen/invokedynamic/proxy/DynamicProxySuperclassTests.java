@@ -150,4 +150,21 @@ public class DynamicProxySuperclassTests {
         obj.a();
         obj.b();
     }
+
+    @Test
+    public void indirectSuperinterfaceDefaultMethodTest() throws Throwable {
+        C c = (C) DynamicProxy.builder()
+                .withSuperclass(C.class)
+                .withInterfaces(B.class)
+                .withInvocationHandler((lookup, name, superType, superMethod) -> new ConstantCallSite(superMethod.asType(superType)))
+                .build()
+                .supplier()
+                .get();
+        c.method();
+    }
+
+    interface A { default void method() { } }
+    interface B extends A {}
+    public abstract static class C implements B {
+    }
 }
