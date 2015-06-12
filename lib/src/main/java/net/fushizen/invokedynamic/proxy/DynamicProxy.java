@@ -76,7 +76,7 @@ public class DynamicProxy {
      */
     public <T> T construct(Object... args) {
         try {
-            return (T) constructor().invoke(args);
+            return (T) constructor().invokeWithArguments(args);
         } catch (Error | RuntimeException e) {
             throw e;
         } catch (Throwable t) {
