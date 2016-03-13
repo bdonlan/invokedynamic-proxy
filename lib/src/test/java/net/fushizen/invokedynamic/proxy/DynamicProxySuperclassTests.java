@@ -68,6 +68,21 @@ public class DynamicProxySuperclassTests {
     }
 
     @Test
+    public void whenShadowedSupermethodIsCalled_superMethodHandleIsAvailable() throws Exception {
+        Super3 obj = (Super3)DynamicProxy.builder().withInterfaces(SuperSuper.class).build().construct();
+
+        assertEquals(3, obj.method());
+    }
+
+    public interface Super3 {
+        default int method() { return 3; }
+    }
+
+    public static interface SuperSuper extends Super3 {
+        default int method() { return 3; }
+    }
+
+    @Test
     public void whenAbstractVariantsAvailable_callIsNotAmbiguous() throws Throwable {
         I1 obj = DynamicProxy.builder().withInterfaces(I1.class, I3.class).build().construct();
 

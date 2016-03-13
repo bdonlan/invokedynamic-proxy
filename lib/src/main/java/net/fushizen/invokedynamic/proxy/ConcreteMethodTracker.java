@@ -14,6 +14,11 @@ class ConcreteMethodTracker {
         // (this new class shadows them).
         contributors.removeIf(m2 -> m2.getDeclaringClass().isAssignableFrom(m.getDeclaringClass()));
 
+        // Conversely, if this new implementation is shadowed by any existing implementations, we'll drop it instead
+        if (contributors.stream().anyMatch(m2 -> m.getDeclaringClass().isAssignableFrom(m2.getDeclaringClass()))) {
+            return;
+        }
+
         contributors.add(m);
     }
 
