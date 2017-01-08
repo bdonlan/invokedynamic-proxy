@@ -675,12 +675,14 @@ public class DynamicProxy {
         }
 
         for (Method m : klass.getDeclaredMethods()) {
+            MethodIdentifier identifier = MethodIdentifier.create(m);
             if (0 == (m.getModifiers() & (Modifier.PROTECTED | Modifier.PUBLIC))) {
                 continue; // Private or package scope method
             }
 
-            if (0 != (m.getModifiers() & Modifier.FINAL)) {
-                continue; // Can't override FINAL methods
+            if (0 != (m.getModifiers() & Modifier.FINAL)) { // Can't override FINAL methods
+                methods.remove(identifier); // If this final method declaration is overridng a superclass method, we
+                continue;                   // must ensure that the superclass's method is not collected
             }
 
             if (klass == Object.class && m.getName().equals("finalize") && !builder.hasFinalizer) {
@@ -688,7 +690,6 @@ public class DynamicProxy {
                 continue;
             }
 
-            MethodIdentifier identifier = new MethodIdentifier(m.getName(), m.getReturnType(), m.getParameterTypes());
             ArrayList<Method> methodOwners = methods.get(identifier);
 
             if (methodOwners == null) {
