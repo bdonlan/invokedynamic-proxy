@@ -2,12 +2,17 @@ package net.fushizen.invokedynamic.proxy;
 
 import org.objectweb.asm.Type;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 
 class MethodIdentifier {
     private final String name;
     private final Class<?> returnType;
     private final Class<?>[] args;
+
+    public static MethodIdentifier create(Method m) {
+        return new MethodIdentifier(m.getName(), m.getReturnType(), m.getParameterTypes());
+    }
 
     public MethodIdentifier(String name, Class<?> returnType, Class<?>[] args) {
         this.name = name;
