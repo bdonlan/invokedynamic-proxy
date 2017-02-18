@@ -419,9 +419,11 @@ public class DynamicProxy {
         int access = ACC_PROTECTED;
         ConcreteMethodTracker concreteMethodTracker = new ConcreteMethodTracker();
 
+        boolean isInterface = true;
         for (Method m : contributors) {
             concreteMethodTracker.add(m);
 
+            isInterface &= m.getDeclaringClass().isInterface();
             if (Modifier.PUBLIC == (m.getModifiers() & Modifier.PUBLIC)) {
                 access = ACC_PUBLIC;
             }
@@ -472,7 +474,8 @@ public class DynamicProxy {
                     H_INVOKESPECIAL,
                     Type.getInternalName(superMethod.getDeclaringClass()),
                     superMethod.getName(),
-                    Type.getMethodDescriptor(superMethod)
+                    Type.getMethodDescriptor(superMethod),
+                    isInterface
             );
         }
 
