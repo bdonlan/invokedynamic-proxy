@@ -1,12 +1,13 @@
 package net.fushizen.invokedynamic.proxy;
 
-import org.junit.Test;
+import static net.fushizen.invokedynamic.proxy.Utils.ignoreOnJava9;
+import static org.junit.Assert.assertEquals;
 
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class DynamicProxySuperclassTests {
     @Test
@@ -168,6 +169,7 @@ public class DynamicProxySuperclassTests {
 
     @Test
     public void whenDefaultMethodIsAccessibleThroughSuperclass_noErrorThrown() throws Throwable {
+        ignoreOnJava9();
         B b = (B) DynamicProxy.builder()
                 .withSuperclass(C.class)
                 .withInterfaces(B.class)
@@ -180,6 +182,7 @@ public class DynamicProxySuperclassTests {
 
     @Test
     public void whenDefaultMethodIsAccessibleThroughSuperinterface_noErrorThrown() throws Throwable {
+        ignoreOnJava9();
         B b = (B) DynamicProxy.builder()
                 .withInterfaces(B.class)
                 .withInvocationHandler((lookup, name, superType, superMethod) -> new ConstantCallSite(superMethod.asType(superType)))
@@ -199,6 +202,7 @@ public class DynamicProxySuperclassTests {
 
     @Test
     public void whenDefaultMethodProviderIsInaccessible_andPackageSet_noExceptionThrown() throws Exception {
+        ignoreOnJava9();
         DynamicProxy.builder()
                 .withInterfaces(PB.class)
                 .withInvocationHandler((lookup, name, superType, superMethod) -> new ConstantCallSite(superMethod.asType(superType)))
@@ -208,6 +212,7 @@ public class DynamicProxySuperclassTests {
 
     @Test
     public void whenDefaultMethodProviderIsInaccessible_andPackageSetImplicitly_noExceptionThrown() throws Exception {
+        ignoreOnJava9();
         DynamicProxy.builder()
                 .withInterfaces(PB.class, D.class)
                 .withInvocationHandler((lookup, name, superType, superMethod) -> new ConstantCallSite(superMethod.asType(superType)))
